@@ -996,6 +996,9 @@ def show_comparison_analysis(df_filtered, month_cols):
     current_month = month_cols[-1]  # Último mes en la lista
     previous_month = month_cols[-2]  # Penúltimo mes en la lista
     
+    # Mostrar información de los meses que se están comparando
+    st.info(f"Comparando: **{previous_month}** (mes anterior) vs **{current_month}** (mes actual)")
+    
     # Filtro por cliente
     col_filter1, col_filter2 = st.columns(2)
     
@@ -1053,13 +1056,21 @@ def show_comparison_analysis(df_filtered, month_cols):
         )
     
     with col_text3:
-        # Cambio en color verde resaltado
+        # Cambio solo el número en verde
+        st.metric(
+            label="Cambio",
+            value=f"{difference:+.1f}%",
+            delta=None
+        )
+        # Aplicar estilo CSS para hacer el número verde
         st.markdown(
-            f"""
-            <div style="background-color: #28a745; padding: 10px; border-radius: 5px; text-align: center;">
-                <h3 style="color: white; margin: 0;">Cambio</h3>
-                <h2 style="color: white; margin: 0;">{difference:+.1f}%</h2>
-            </div>
+            """
+            <style>
+            div[data-testid="metric-container"]:nth-child(3) div[data-testid="metric-value"] {
+                color: #28a745 !important;
+                font-weight: bold !important;
+            }
+            </style>
             """,
             unsafe_allow_html=True
         )
