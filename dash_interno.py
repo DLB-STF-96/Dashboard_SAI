@@ -479,9 +479,9 @@ def get_client_usage_stats(df, client, month_cols, selected_month=None):
     usage_percentage = (users / total_people * 100) if total_people > 0 else 0
     return total_people, users, round(usage_percentage, 2)
 
-def create_usage_percentage_chart(df, month_cols, selected_month_filter=None):
+def create_usage_percentage_chart(df, month_cols, selected_month_filter=None, show_average_line=False):
     """
-    Crea gráfico de porcentaje de personas que utilizan SAI
+    Crea gráfico de porcentaje de personas que utilizan SAI con orden ascendente y línea de promedio opcional
     """
     if df.empty:
         return None
@@ -503,6 +503,9 @@ def create_usage_percentage_chart(df, month_cols, selected_month_filter=None):
     if client_stats:
         stats_df = pd.DataFrame(client_stats)
         
+        # Ordenar por porcentaje de uso de forma ascendente
+        stats_df = stats_df.sort_values('Porcentaje_Uso', ascending=True)
+        
         # Crear título dinámico
         title_text = 'Porcentaje de Uso SAI por Cliente'
         if selected_month_filter:
@@ -519,6 +522,16 @@ def create_usage_percentage_chart(df, month_cols, selected_month_filter=None):
         
         fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
         fig.update_layout(xaxis_tickangle=-45, yaxis_range=[0, 100])
+        
+        # Agregar línea de promedio si se solicita
+        if show_average_line:
+            average_percentage = stats_df['Porcentaje_Uso'].mean()
+            fig.add_hline(
+                y=average_percentage, 
+                line_dash="dash", 
+                line_color="red",
+                annotation_position="top right"
+            )
         
         return fig
     
@@ -858,17 +871,26 @@ def show_usage_analysis(df_filtered, month_cols, client_analysis_by_country, sel
         selected_client = st.selectbox("Filtrar por Cliente:", available_clients, key="section2_client")
     
     with col_filter2:
-        # Filtro por mes para esta sección
-        selected_month_section2 = st.selectbox("Filtrar por Mes:", month_cols, key="section2_month")
+        # Filtro por mes para esta sección - DEFAULT EN Aug-25
+        default_month_index = 0
+        if 'Aug-25' in month_cols:
+            default_month_index = month_cols.index('Aug-25')
+        
+        selected_month_section2 = st.selectbox(
+            "Filtrar por Mes:", 
+            month_cols, 
+            index=default_month_index,
+            key="section2_month"
+        )
     
     # Aplicar filtros para esta sección
     df_section2 = df_filtered.copy()
     if selected_client != "Todos":
         df_section2 = df_section2[df_section2['Cliente'] == selected_client]
     
-    # Gráfico de Porcentaje de Uso SAI
+    # Gráfico de Porcentaje de Uso SAI con línea de promedio
     st.subheader("📊 Porcentaje de Uso de SAI")
-    usage_chart = create_usage_percentage_chart(df_section2, month_cols, selected_month_section2)
+    usage_chart = create_usage_percentage_chart(df_section2, month_cols, selected_month_section2, show_average_line=True)
     if usage_chart:
         st.plotly_chart(usage_chart, use_container_width=True)
     else:
@@ -959,6 +981,109 @@ def show_adoption_analysis(df_filtered, month_cols):
     else:
         st.warning("No hay datos suficientes para mostrar el gráfico de adopción promedio.")
 
+def show_comparison_analysis(df_filtered, month_cols):
+    """
+    Muestra la sección de Comparación Mes Actual vs Mes Anterior (último mes vs previo)
+    """
+    st.subheader("🔄 Comparación Uso Mes Actual vs Mes Anterior")
+    
+    # Determinar automáticamente el último mes y el anterior
+    if len(month_cols) < 2:
+        st.warning("Se necesitan al menos 2 meses de datos para realizar la comparación.")
+        return
+    
+    # Último mes (mes actual) y mes anterior
+    current_month = month_cols[-1]  # Último mes en la lista
+    previous_month = month_cols[-2]  # Penúltimo mes en la lista
+    
+    # Mostrar información de los meses que se están comparando
+    st.info(f"Comparando: **{previous_month}** (mes anterior) vs **{current_month}** (mes actual)")
+    
+    # Filtro por cliente
+    col_filter1, col_filter2 = st.columns(2)
+    
+    with col_filter1:
+        available_clients_comparison = ["Todos"] + list(df_filtered['Cliente'].unique())
+        selected_client_comparison = st.selectbox(
+            "Filtrar por Cliente:", 
+            available_clients_comparison, 
+            key="comparison_client"
+        )
+    
+    # Aplicar filtros
+    df_comparison = df_filtered.copy()
+    if selected_client_comparison != "Todos":
+        df_comparison = df_comparison[df_comparison['Cliente'] == selected_client_comparison]
+    
+    # Calcular promedios para mostrar en texto grande
+    current_stats = []
+    previous_stats = []
+    
+    for client in df_comparison['Cliente'].unique():
+        # Estadísticas mes actual
+        total_people, users_current, usage_percentage_current = get_client_usage_stats(
+            df_comparison, client, month_cols, current_month
+        )
+        if total_people > 0:
+            current_stats.append(usage_percentage_current)
+        
+        # Estadísticas mes anterior
+        total_people, users_previous, usage_percentage_previous = get_client_usage_stats(
+            df_comparison, client, month_cols, previous_month
+        )
+        if total_people > 0:
+            previous_stats.append(usage_percentage_previous)
+    
+    # Calcular promedios
+    avg_current = sum(current_stats) / len(current_stats) if current_stats else 0
+    avg_previous = sum(previous_stats) / len(previous_stats) if previous_stats else 0
+    difference = avg_current - avg_previous
+    
+    # Mostrar texto grande con estadísticas
+    st.markdown("### 📊 Resumen de Comparación")
+    col_text1, col_text2, col_text3 = st.columns(3)
+    
+    with col_text1:
+        st.metric(
+            label=f"Promedio {previous_month}",
+            value=f"{avg_previous:.1f}%"
+        )
+    
+    with col_text2:
+        st.metric(
+            label=f"Promedio {current_month}",
+            value=f"{avg_current:.1f}%"
+        )
+    
+    with col_text3:
+        st.metric(
+            label="Cambio",
+            value=f"{difference:+.1f}%",
+        )
+    
+    # Crear gráficos lado a lado
+    col_chart1, col_chart2 = st.columns(2)
+    
+    with col_chart1:
+        st.subheader(f"📊 Uso {previous_month}")
+        chart_previous = create_usage_percentage_chart(
+            df_comparison, month_cols, previous_month, show_average_line=True
+        )
+        if chart_previous:
+            st.plotly_chart(chart_previous, use_container_width=True)
+        else:
+            st.warning("No hay datos para el mes anterior.")
+    
+    with col_chart2:
+        st.subheader(f"📊 Uso {current_month}")
+        chart_current = create_usage_percentage_chart(
+            df_comparison, month_cols, current_month, show_average_line=True
+        )
+        if chart_current:
+            st.plotly_chart(chart_current, use_container_width=True)
+        else:
+            st.warning("No hay datos para el mes actual.")
+
 def main():
     """
     Función principal del dashboard con navegación por secciones
@@ -1028,7 +1153,7 @@ def main():
     
     # NAVEGACIÓN POR SECCIONES
     st.subheader("Navegación")
-    col_nav1, col_nav2, col_nav3 = st.columns(3)
+    col_nav1, col_nav2, col_nav3, col_nav4 = st.columns(4)
     
     # Inicializar estado de sesión para la sección activa
     if 'active_section' not in st.session_state:
@@ -1046,6 +1171,10 @@ def main():
         if st.button("📈 Análisis de Adopción", use_container_width=True):
             st.session_state.active_section = 'adoption'
     
+    with col_nav4:
+        if st.button("🔄 Comparación Mensual", use_container_width=True):
+            st.session_state.active_section = 'comparison'
+    
     st.markdown("---")
     
     # Mostrar la sección correspondiente
@@ -1057,6 +1186,9 @@ def main():
     
     elif st.session_state.active_section == 'adoption':
         show_adoption_analysis(df_filtered, month_cols)
+    
+    elif st.session_state.active_section == 'comparison':
+        show_comparison_analysis(df_filtered, month_cols)
 
 if __name__ == "__main__":
     main()
