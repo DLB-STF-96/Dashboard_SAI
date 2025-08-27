@@ -1056,22 +1056,10 @@ def show_comparison_analysis(df_filtered, month_cols):
         )
     
     with col_text3:
-        # Cambio solo el número en verde
-        st.metric(
-            label="Cambio",
-            value=f"{difference:+.1f}%",
-            delta=None
-        )
-        # Aplicar estilo CSS para hacer el número verde
+        # Mostrar el cambio con HTML personalizado para color verde
+        st.markdown("**Cambio**")
         st.markdown(
-            """
-            <style>
-            div[data-testid="metric-container"]:nth-child(3) div[data-testid="metric-value"] {
-                color: #28a745 !important;
-                font-weight: bold !important;
-            }
-            </style>
-            """,
+            f'<p style="color: #28a745; font-size: 2rem; font-weight: bold; margin: 0;">{difference:+.1f}%</p>',
             unsafe_allow_html=True
         )
     
