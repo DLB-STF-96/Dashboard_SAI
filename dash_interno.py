@@ -304,12 +304,12 @@ def filter_eligible_clients(df, eligible_only):
     if not eligible_only:
         return df
     
-    # Lista de clientes elegibles (incluyendo NCR)
+    # Lista de clientes elegibles (incluyendo NCR y MAPFRE)
     eligible_clients = [
         'ROMBO', 'FORD', 'NCR', 'BCI', 'BANCO DE BOGOTA', 'TELEFONICA', 
         'BANAMEX', 'CITIBANK', 'BIMBO', 'WALMART', 'HONDA', 
         'FARMACIA GUADALAJARA', 'BANORTE', 'IZIPAY', 'LAUREATE EDUCATION', 
-        'MAPRE', 'SCHARFF', 'BANCO AGRICOLA', 'TIGO PANAMA', 'BAC', 'TIGO EL SALVADOR'
+        'MAPFRE', 'SCHARFF', 'BANCO AGRICOLA', 'TIGO PANAMA', 'BAC', 'TIGO EL SALVADOR'
     ]
     
     # Filtrar dataframe para incluir solo clientes elegibles
@@ -479,7 +479,7 @@ def get_client_usage_stats(df, client, month_cols, selected_month=None):
     usage_percentage = (users / total_people * 100) if total_people > 0 else 0
     return total_people, users, round(usage_percentage, 2)
 
-def create_usage_percentage_chart(df, month_cols, selected_month_filter=None, show_average_line=False):
+def create_usage_percentage_chart(df, month_cols, selected_month_filter=None, show_average_line=False, line_color="red"):
     """
     Crea gráfico de porcentaje de personas que utilizan SAI con orden ascendente y línea de promedio opcional
     """
@@ -529,8 +529,8 @@ def create_usage_percentage_chart(df, month_cols, selected_month_filter=None, sh
             fig.add_hline(
                 y=average_percentage, 
                 line_dash="dash", 
-                line_color="red",
-                annotation_position="top right"
+                line_color=line_color,
+                line_width=3  # Línea más gruesa
             )
         
         return fig
@@ -996,9 +996,6 @@ def show_comparison_analysis(df_filtered, month_cols):
     current_month = month_cols[-1]  # Último mes en la lista
     previous_month = month_cols[-2]  # Penúltimo mes en la lista
     
-    # Mostrar información de los meses que se están comparando
-    st.info(f"Comparando: **{previous_month}** (mes anterior) vs **{current_month}** (mes actual)")
-    
     # Filtro por cliente
     col_filter1, col_filter2 = st.columns(2)
     
@@ -1056,9 +1053,15 @@ def show_comparison_analysis(df_filtered, month_cols):
         )
     
     with col_text3:
-        st.metric(
-            label="Cambio",
-            value=f"{difference:+.1f}%",
+        # Cambio en color verde resaltado
+        st.markdown(
+            f"""
+            <div style="background-color: #28a745; padding: 10px; border-radius: 5px; text-align: center;">
+                <h3 style="color: white; margin: 0;">Cambio</h3>
+                <h2 style="color: white; margin: 0;">{difference:+.1f}%</h2>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
     
     # Crear gráficos lado a lado
@@ -1067,7 +1070,7 @@ def show_comparison_analysis(df_filtered, month_cols):
     with col_chart1:
         st.subheader(f"📊 Uso {previous_month}")
         chart_previous = create_usage_percentage_chart(
-            df_comparison, month_cols, previous_month, show_average_line=True
+            df_comparison, month_cols, previous_month, show_average_line=True, line_color="red"
         )
         if chart_previous:
             st.plotly_chart(chart_previous, use_container_width=True)
@@ -1077,7 +1080,7 @@ def show_comparison_analysis(df_filtered, month_cols):
     with col_chart2:
         st.subheader(f"📊 Uso {current_month}")
         chart_current = create_usage_percentage_chart(
-            df_comparison, month_cols, current_month, show_average_line=True
+            df_comparison, month_cols, current_month, show_average_line=True, line_color="green"
         )
         if chart_current:
             st.plotly_chart(chart_current, use_container_width=True)
