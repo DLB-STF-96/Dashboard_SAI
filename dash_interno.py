@@ -243,7 +243,7 @@ def add_synthetic_bci_records(df):
                 'Ingreso': 'NA',
                 'Pais': 'CHI',
                 'Jul-25': 0,  # TODOS activos en Jul-25 para 100%
-                'Aug-25': 0   # TODOS activos en Aug-25 para 100%
+                'Aug-25': 1   # TODOS activos en Aug-25 para 100%
             }
             # Agregar todas las demás columnas con valor 0
             for col in df.columns:
@@ -1194,3 +1194,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
